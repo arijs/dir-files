@@ -1,7 +1,12 @@
-import { multiply } from '../';
+import dirFiles from '../';
 import { strictEqual } from 'assert';
 
-describe('multiply', () => {
+describe('dir-files', () => {
+
+  it('returns a function', () => {
+    strictEqual(typeof dirFiles({}), 'function');
+  });
+  /*
   it('returns 0 when either argument is 0', () => {
     strictEqual(multiply(0, 2), 0);
     strictEqual(multiply(4, 0), 0);
@@ -25,4 +30,5 @@ describe('multiply', () => {
     strictEqual(multiply(2, -2), -4);
     strictEqual(multiply(-2, -2), 4);
   });
+  */
 });
