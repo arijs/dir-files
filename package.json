@@ -1,6 +1,6 @@
 {
   "name": "dir-files",
-  "version": "1.0.0",
+  "version": "1.0.0-rc.2",
   "description": "micro library to get files from a path with middlewares",
   "main": "dist/dir-files.js",
   "module": "dist/dir-files.esm.js",
@@ -34,7 +34,9 @@
     "dist"
   ],
   "homepage": "https://github.com/rollup/rollup-starter-project#readme",
-  "dependencies": {},
+  "dependencies": {
+    "rollup-plugin-buble": "^0.13.0"
+  },
   "devDependencies": {
     "babel-eslint": "^6.1.2",
     "babel-plugin-external-helpers": "^6.8.0",
