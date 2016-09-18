@@ -1,1 +1,2 @@
---reporter test/istanbul.reporter.js --recursive --compilers js:babel-register
+dist/test
+--reporter test/istanbul.reporter.js --recursive --compilers js:buble/register

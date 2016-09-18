@@ -1,4 +1,4 @@
-import dirFiles from '../';
+import dirFiles from '../dir-files.js';
 import { strictEqual } from 'assert';
 
 describe('dir-files', () => {
