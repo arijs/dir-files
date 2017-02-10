@@ -33,8 +33,10 @@
     "lib",
     "dist"
   ],
-  "homepage": "https://github.com/rollup/rollup-starter-project#readme",
-  "dependencies": {},
+  "homepage": "https://github.com/arijs/dir-files#readme",
+  "dependencies": {
+    "minimatch": "^3.0.3"
+  },
   "devDependencies": {
     "buble": "^0.13.2",
     "babel-eslint": "^6.1.2",

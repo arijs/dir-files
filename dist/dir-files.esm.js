@@ -1,4 +1,5 @@
 import fs from 'fs';
+import mm from 'minimatch';
 import path from 'path';
 
 /*eslint no-console: 0*/
@@ -15,6 +16,61 @@ function stat(opt) {
 			obj.file.stat = stat;
 			return obj.callback();
 		});
+	};
+}
+
+/*eslint no-console: 0*/
+
+function glob ( opt ) {
+	var Minimatch = mm.Minimatch;
+	opt || (opt = {});
+	var mmOpts = opt.options || {
+		nocase: true,
+		matchBase: true
+	};
+	var includeOptions = opt.includeOptions || mmOpts;
+	var excludeOptions = opt.excludeOptions || mmOpts;
+	var includePatterns = [].concat( opt.include || [] );
+	var excludePatterns = [].concat( opt.exclude || [] );
+	var includeCount = includePatterns.length;
+	var excludeCount = excludePatterns.length;
+	var verbose = opt.verbose;
+	var i;
+	for ( i = 0; i < includeCount; i++ ) {
+		includePatterns[i] = new Minimatch( includePatterns[i], includeOptions );
+	}
+	for ( i = 0; i < excludeCount; i++ ) {
+		excludePatterns[i] = new Minimatch( excludePatterns[i], excludeOptions );
+	}
+	return function glob ( obj ) {
+		var file = obj.file;
+		var allow = true;
+		if ( file.name ) {
+			var stat = file.stat;
+			allow = stat && stat.isDirectory();
+			var fname = [].concat(file.dir.sub || [], file.name).join('/');
+			if ( !allow ) {
+				if (verbose) console.log('glob not', fname);
+				for ( i = 0; i < includeCount; i++ ) {
+					allow = includePatterns[i].match(fname);
+					if ( allow ) {
+						if (verbose) console.log('glob inc', fname, includePatterns[i].pattern);
+						break;
+					}
+				}
+			}
+			if ( allow ) {
+				if (verbose) console.log('glob is', fname);
+				for ( i = 0; i < excludeCount; i++ ) {
+					allow = !excludePatterns[i].match(fname);
+					if ( !allow ) {
+						if (verbose) console.log('glob exc', fname, excludePatterns[i].pattern);
+						break;
+					}
+				}
+			}
+		}
+		return obj.callback(null, !allow);
 	};
 }
 
@@ -51,7 +107,7 @@ function addDirFiles(opt) {
 			var count = dirFiles.length;
 			for ( var i = 0; i < count; i++ ) {
 				var subFile = dirFiles[i];
-				obj.queue.push({
+				obj.queue.splice(i, 0, {
 					name: subFile,
 					fullpath: path.join(dir.name, dir.sub, subFile),
 					stat: null,
@@ -85,7 +141,7 @@ function rec(opt) {
 		}
 		if (test) {
 			var dir = file.dir;
-			obj.queue.push({
+			obj.queue.unshift({
 				name: '',
 				fullpath: path.join(dir.name, dir.sub, file.name),
 				stat: null,
@@ -102,6 +158,7 @@ function rec(opt) {
 
 var plugins = {
 	stat: stat,
+	glob: glob,
 	readDir: readDir,
 	addDirFiles: addDirFiles,
 	rec: rec
@@ -126,6 +183,7 @@ function all(obj) {
 		nextPlugin({
 			file: obj.file,
 			queue: obj.queue,
+			setQueue: obj.setQueue,
 			result: obj.result,
 			callback: function(err, skip) {
 				if (err) return obj.callback(err);
