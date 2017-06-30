@@ -4,7 +4,7 @@ import path from 'path';
 
 /*eslint no-console: 0*/
 
-var stat = function(opt) {
+function stat(opt) {
 	opt || (opt = {});
 	return function stat(file, callback) {
 		var fpath = file.fullpath;
@@ -16,11 +16,11 @@ var stat = function(opt) {
 			callback(err);
 		});
 	};
-};
+}
 
 /*eslint no-console: 0*/
 
-var glob = function ( opt ) {
+function glob ( opt ) {
 	var Minimatch = mm.Minimatch;
 	opt || (opt = {});
 	var mmOpts = opt.options || {
@@ -70,11 +70,11 @@ var glob = function ( opt ) {
 		}
 		return callback(null, !allow);
 	};
-};
+}
 
 /*eslint no-console: 0*/
 
-var readDir = function(opt) {
+function readDir(opt) {
 	opt || (opt = {});
 	return function readDir(file, callback) {
 		var stat = file.stat;
@@ -91,11 +91,11 @@ var readDir = function(opt) {
 			return callback();
 		});
 	};
-};
+}
 
 /*eslint no-console: 0*/
 
-var addDirFiles = function(opt) {
+function addDirFiles(opt) {
 	opt || (opt = {});
 	return function addDirFiles(file, callback) {
 		var this$1 = this;
@@ -120,11 +120,11 @@ var addDirFiles = function(opt) {
 		}
 		return callback();
 	};
-};
+}
 
 /*eslint no-console: 0*/
 
-var rec = function(opt) {
+function rec(opt) {
 	opt || (opt = {});
 	return function rec(file, callback) {
 		var stat = file.stat;
@@ -151,7 +151,7 @@ var rec = function(opt) {
 		}
 		callback();
 	};
-};
+}
 
 function median(series, count) {
 	var odd = count % 2;
@@ -207,7 +207,7 @@ function beforeFile(file) {
 			files: [],
 			over: [],
 			total: 0
-		};
+		}
 	}
 	if ( ltime ) {
 		ltime.total = ltotal = now - ltime.start;
@@ -230,7 +230,7 @@ function beforeFile(file) {
 		time.plugins = time.plugins.map(function(v, i) {
 			v = stats(v);
 			var name = plugins[i].name;
-			v.name = 'plugin #'+(i+1)+(name ? ' '+name : '');
+			v.name = name || 'plugin #'+(i+1);
 			return v;
 		});
 	}
@@ -337,7 +337,7 @@ function dir(opt) {
 	};
 	var callbackFile = function(err, skip) {
 		if (afterFile) {
-			afterFile.call(obj, file, err, skip);
+			afterFile.call(obj, obj.file, err, skip);
 		}
 		next(err);
 	};
