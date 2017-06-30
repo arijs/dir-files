@@ -6,29 +6,30 @@ var dfp = dirFiles.plugins;
 dirFiles({
 	path: path.join(__dirname, '..'),
 	plugins: [
-		function(obj) {
-			var name = obj.file.name;
+		function(file, callback) {
+			var name = file.name;
 			// example of manual skipping
 			var skip = ('.' === name.charAt(0)) || ('node_modules' === name);
-			obj.callback(null, skip);
+			callback(null, skip);
 		},
 		dfp.stat(),
-		dfp.glob({
+		/*dfp.glob({
 			include: ['*.js'],
 			exclude: ['.*', 'node_modules', 'test', 'rollup.*']
-		}),
+		}),*/
 		dfp.readDir(),
 		dfp.addDirFiles(),
 		dfp.rec(),
-		function(obj) {
-			var file = obj.file;
+		function(file, callback) {
 			if ( file.name && !file.stat.isDirectory() ) {
 				console.log(path.join(file.dir.sub, file.name));
 			}
-			obj.callback();
+			callback();
 		}
 	],
 	callback: function(err) {
-		if (err) throw err;
+		if (err) {
+			throw err;
+		}
 	}
 })();
