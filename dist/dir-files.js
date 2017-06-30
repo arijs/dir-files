@@ -157,6 +157,113 @@ var rec = function(opt) {
 	};
 };
 
+function median(series, count) {
+	var odd = count % 2;
+	var half = (count - odd) * 0.5;
+	return odd
+		? series[half]
+		: (series[half-1] + series[half]) * 0.5;
+}
+
+function stats(series) {
+	series = series && series.sort();
+	var count = series && series.length;
+	var sum = 0;
+	var sumDev = 0;
+	var min = +Infinity;
+	var max = -Infinity;
+	var i, t;
+	for ( i = 0; i < count; i++ ) {
+		t = series[i];
+		sum += t;
+		(t < min) && (min = t);
+		(t > max) && (max = t);
+	}
+	var avg = count ? sum / count : sum;
+	for ( i = 0; i < count; i++ ) {
+		t = series[i];
+		sumDev += Math.pow(t-avg, 2);
+	}
+	var variance = count ? sumDev / count : sumDev;
+	return {
+		sum: sum,
+		count: count,
+		avg: avg,
+		min: min,
+		max: max,
+		variance: variance,
+		stdDev: Math.sqrt(variance),
+		median: count ? median(series, count) : 0
+	};
+}
+
+function beforeFile(file) {
+	var time = this.time;
+	var last = this.lastFile;
+	var ltime = last && last.time;
+	var ltotal;
+	var lover;
+	var now = Date.now();
+	if ( !time ) {
+		this.time = time = {
+			start: now,
+			plugins: [],
+			files: [],
+			over: [],
+			total: 0
+		};
+	}
+	if ( ltime ) {
+		ltime.total = ltotal = now - ltime.start;
+		ltime.over = lover = now - ltime.startPlugin;
+		time.files.push(ltotal);
+		time.over.push(lover);
+	}
+	if ( file ) {
+		file.time = {
+			start: now,
+			startPlugin: now,
+			plugins: [],
+			total: 0
+		};
+	} else {
+		var plugins = this.plugins;
+		time.total = now - time.start;
+		time.files = stats(time.files);
+		time.over = stats(time.over);
+		time.plugins = time.plugins.map(function(v, i) {
+			v = stats(v);
+			var name = plugins[i].name;
+			v.name = 'plugin #'+(i+1)+(name ? ' '+name : '');
+			return v;
+		});
+	}
+}
+
+function afterPlugin() {
+	var time = this.time;
+	var file = this.file;
+	var ftime = file.time;
+	var startPlugin = ftime.startPlugin;
+	var pIndex = this.pIndex;
+	var now = Date.now();
+	var timePlugin = now - startPlugin;
+	var timePluginArray = time.plugins[pIndex];
+	ftime.startPlugin = now;
+	if ( !timePluginArray ) {
+		time.plugins[pIndex] = timePluginArray = [];
+	}
+	timePluginArray.push(timePlugin);
+	ftime.plugins[pIndex] = timePlugin;
+}
+
+var timePlugins = {
+	median: median,
+	stats: stats,
+	beforeFile: beforeFile,
+	afterPlugin: afterPlugin
+};
+
 var plugins = {
 	stat: stat,
 	glob: glob,
@@ -180,22 +287,22 @@ function pathToFile(name) {
 }
 
 function all(obj, callbackFile) {
+	function callbackPlugin(err, skip) {
+		if (afterPlugin) {
+			afterPlugin.call(obj, err, skip);
+		}
+		if (err || skip) return callbackFile(err, skip);
+		obj.pIndex++;
+		process.nextTick(all, obj, callbackFile);
+	}
 	var pIndex = obj.pIndex;
 	var nextPlugin = obj.plugins[pIndex];
 	var beforePlugin = obj.beforePlugin;
 	var afterPlugin = obj.afterPlugin;
+	if (beforePlugin) {
+		beforePlugin.call(obj);
+	}
 	if (nextPlugin) {
-		var callbackPlugin = function(err, skip) {
-			if (afterPlugin) {
-				afterPlugin(obj, err, skip);
-			}
-			if (err || skip) return callbackFile(err, skip);
-			obj.pIndex++;
-			process.nextTick(all, obj, callbackFile);
-		};
-		if (beforePlugin) {
-			beforePlugin(obj);
-		}
 		nextPlugin.call(obj, obj.file, callbackPlugin);
 	} else {
 		callbackFile();
@@ -206,12 +313,13 @@ function dir(opt) {
 	function next(err) {
 		if (err) return callback.call(obj, err);
 		var file = obj.queue.shift();
+		obj.lastFile = obj.file;
 		obj.file = file;
 		obj.pIndex = 0;
+		if (beforeFile) {
+			beforeFile.call(obj, file);
+		}
 		if (file) {
-			if (beforeFile) {
-				beforeFile(obj);
-			}
 			all(obj, callbackFile);
 		} else {
 			callback.call(obj);
@@ -224,6 +332,7 @@ function dir(opt) {
 		plugins: opt.plugins || [],
 		pIndex: 0,
 		file: void 0,
+		lastFile: void 0,
 		queue: [].concat(opt.path || []).map(pathToFile),
 		result: opt.result,
 		beforePlugin: opt.beforePlugin,
@@ -232,7 +341,7 @@ function dir(opt) {
 	};
 	var callbackFile = function(err, skip) {
 		if (afterFile) {
-			afterFile(obj, err, skip);
+			afterFile.call(obj, file, err, skip);
 		}
 		next(err);
 	};
@@ -240,5 +349,6 @@ function dir(opt) {
 }
 
 dir.plugins = plugins;
+dir.timePlugins = timePlugins;
 
 module.exports = dir;
