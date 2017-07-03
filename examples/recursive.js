@@ -2,31 +2,42 @@ var path = require('path');
 var dirFiles = require('../dist/dir-files');
 
 var dfp = dirFiles.plugins;
+var argPath = process.argv[2];
+var pluginOpt = {};
 
 dirFiles({
-	path: path.join(__dirname, '..'),
+	path: argPath
+		? path.resolve(argPath)
+		: path.join(__dirname, '..'),
 	plugins: [
-		function skipFile(file, callback) {
+		function skipFile(file) {
 			var name = file.name;
 			// example of manual skipping
-			var skip = ('.' === name.charAt(0)) || ('node_modules' === name);
-			callback(null, skip);
+			var charZero = name.charAt(0);
+			var skip = ('.' === charZero) ||
+				('$' === charZero) ||
+				('node_modules' === name);
+			return skip ? this.SKIP : null;
 		},
-		dfp.stat(),
 		/*dfp.glob({
 			include: ['*.js'],
 			exclude: ['.*', 'node_modules', 'test', 'rollup.*']
 		}),*/
-		dfp.readDir(),
-		dfp.addDirFiles(),
-		dfp.rec(),
-		function printFile(file, callback) {
-			if ( file.name && !file.stat.isDirectory() ) {
-				console.log(path.join(file.dir.sub, file.name));
+		dfp.stat(),
+		dfp.readDir(pluginOpt),
+		dfp.queueDirFiles(pluginOpt),
+		dfp.queueDir(pluginOpt),
+		dfp.skipEmptyName,
+		function printFile(file) {
+			if ( !file.stat.isDirectory() ) {
+				console.log('~ '+path.join(file.dir.sub, file.name));
 			}
-			callback();
 		}
 	],
+	onError: function(err, file) {
+		console.log('! '+path.join(file.dir.sub, file.name));
+		console.error(err);
+	},
 	callback: function(err) {
 		if (err) {
 			throw err;
@@ -35,4 +46,4 @@ dirFiles({
 	},
 	beforeFile: dirFiles.timePlugins.beforeFile,
 	afterPlugin: dirFiles.timePlugins.afterPlugin
-})();
+});

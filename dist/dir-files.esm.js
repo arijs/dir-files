@@ -1,22 +1,6 @@
-import fs from 'fs';
-import mm from 'minimatch';
 import path from 'path';
-
-/*eslint no-console: 0*/
-
-function stat(opt) {
-	opt || (opt = {});
-	return function stat(file, callback) {
-		var fpath = file.fullpath;
-		fs.stat(fpath, function(err, stat) {
-			if (opt.verbose) {
-				console.log('stat', err, stat);
-			}
-			file.stat = stat;
-			callback(err);
-		});
-	};
-}
+import mm from 'minimatch';
+import fs from 'fs';
 
 /*eslint no-console: 0*/
 
@@ -74,84 +58,111 @@ function glob ( opt ) {
 
 /*eslint no-console: 0*/
 
-function readDir(opt) {
+function statPlugin(opt) {
 	opt || (opt = {});
-	return function readDir(file, callback) {
-		var stat = file.stat;
-		if ( !(stat && stat.isDirectory()) ) {
-			return callback();
-		}
-		var fpath = file.fullpath;
-		fs.readdir(fpath, function(err, dirFiles) {
-			if (opt.verbose) {
-				console.log('readdir', err, dirFiles);
-			}
-			if (err) return callback(err);
-			file.dir.files = dirFiles;
-			return callback();
-		});
-	};
-}
-
-/*eslint no-console: 0*/
-
-function addDirFiles(opt) {
-	opt || (opt = {});
-	return function addDirFiles(file, callback) {
-		var this$1 = this;
-
-		var dir = file.dir;
-		var dirFiles = dir.files;
-		if (!file.name && dirFiles) {
-			var count = dirFiles.length;
-			for ( var i = 0; i < count; i++ ) {
-				var subFile = dirFiles[i];
-				this$1.queue.splice(i, 0, {
-					name: subFile,
-					fullpath: path.join(dir.name, dir.sub, subFile),
-					stat: null,
-					dir: dir,
-					time: {}
-				});
-			}
-			if (opt.verbose) {
-				console.log('addDirFiles', dir);
-			}
-		}
-		return callback();
-	};
-}
-
-/*eslint no-console: 0*/
-
-function rec(opt) {
-	opt || (opt = {});
-	return function rec(file, callback) {
-		var stat = file.stat;
-		if ( !(file.name && stat && stat.isDirectory()) ) {
-			return callback();
-		}
-		var test = opt.test || true;
-		if (test instanceof Function) {
-			test = test.call(this, file);
-		}
-		if (test) {
-			var dir = file.dir;
-			this.queue.unshift({
-				name: '',
-				fullpath: path.join(dir.name, dir.sub, file.name),
-				stat: null,
-				dir: {
-					name: dir.name,
-					sub: path.join(dir.sub, file.name),
-					files: null
-				},
-				time: {}
+	return {
+		name: 'stat',
+		filter: function(file) {
+			return !file.stat;
+		},
+		async: function stat(file, callback) {
+			fs.stat(file.fullpath, function(err, stat) {
+				if (opt.verbose) {
+					console.log('stat', file.dir.sub, file.name, err, stat);
+				}
+				file.stat = stat;
+				callback(err);
 			});
 		}
-		callback();
 	};
 }
+
+/*eslint no-console: 0*/
+
+function queueDirPlugin(opt) {
+	opt || (opt = {});
+	var filter = opt.filter;
+	return {
+		name: 'queueDir',
+		filter: function(file) {
+			return file.name &&
+				file.stat &&
+				file.stat.isDirectory() &&
+				( !filter || filter(file) );
+		},
+		sync: function(file) {
+			if (opt.verbose) {
+				console.log('queueDir', file.dir.sub, file.name);
+			}
+			var clean = this.fn.enterDirPath(file.dir, file.name, file.stat);
+			this.queue = [clean].concat(this.queue);
+		}
+	};
+}
+
+/*eslint no-console: 0*/
+
+function readDirPlugin(opt) {
+	opt || (opt = {});
+	return {
+		name: 'readDir',
+		filter: function(file) {
+			return !file.name && file.stat && file.stat.isDirectory();
+		},
+		async: function readDir(file, callback) {
+			fs.readdir(file.fullpath, function(err, dirFiles) {
+				if (opt.verbose) {
+					console.log('readdir', file.dir.sub, file.name, err, dirFiles.length);
+				}
+				file.dir.files = dirFiles;
+				callback(err);
+			});
+		}
+	};
+}
+
+/*eslint no-console: 0*/
+
+function queueDirFilesPlugin(opt) {
+	opt || (opt = {});
+	var filter = opt.filter;
+	return {
+		name: 'queueDirFiles',
+		filter: function(file) {
+			return !file.name &&
+				file.stat &&
+				file.stat.isDirectory() &&
+				file.dir.files;
+		},
+		sync: function(file) {
+			var self = this;
+			var dir = file.dir;
+			var fileList = dir.files;
+			if (opt.verbose) {
+				console.log('queueDirFiles', dir.sub, file.name, fileList.length);
+			}
+			var clean = [];
+			if ( !(filter instanceof Function) ) {
+				filter = void 0;
+			}
+			fileList.forEach(function queueFile(subFile) {
+				subFile = self.fn.subDirPath(dir, subFile, null);
+				if (filter && !filter(subFile)) return;
+				clean.push(subFile);
+			});
+			this.queue = clean.concat(this.queue);
+		}
+	};
+}
+
+var skipEmptyNamePlugin = {
+	name: 'skipEmptyName',
+	sync: function skipEmptyName(file) {
+		if (!file.name) {
+			return this.SKIP;
+		}
+	}
+};
 
 function median(series, count) {
 	var odd = count % 2;
@@ -237,11 +248,12 @@ function beforeFile(file) {
 }
 
 function afterPlugin() {
+	var pIndex = this.pIndex;
+	if (this.plugins[pIndex].sync) return;
 	var time = this.time;
 	var file = this.file;
 	var ftime = file.time;
 	var startPlugin = ftime.startPlugin;
-	var pIndex = this.pIndex;
 	var now = Date.now();
 	var timePlugin = now - startPlugin;
 	var timePluginArray = time.plugins[pIndex];
@@ -260,54 +272,117 @@ var timePlugins = {
 	afterPlugin: afterPlugin
 };
 
-var plugins = {
-	stat: stat,
-	glob: glob,
-	readDir: readDir,
-	addDirFiles: addDirFiles,
-	rec: rec
-};
-
-function pathToFile(name) {
+function rootPath(pathname) {
 	return ({
 		name: '',
-		fullpath: name,
+		fullpath: pathname,
 		stat: null,
 		dir: {
-			name: name,
+			root: pathname,
 			sub: '',
 			files: null
-		},
-		time: {}
+		}
 	});
 }
 
-function all(obj, callbackFile) {
-	function callbackPlugin(err, skip) {
-		if (afterPlugin) {
-			afterPlugin.call(obj, err, skip);
+function subDirPath(dir, subFile, stat) {
+	return ({
+		name: subFile,
+		fullpath: path.join(dir.root, dir.sub, subFile),
+		stat: stat,
+		dir: dir
+	});
+}
+
+function enterDirPath(dir, subFile, stat) {
+	return ({
+		name: '',
+		fullpath: path.join(dir.root, dir.sub, subFile),
+		stat: stat,
+		dir: {
+			root: dir.root,
+			sub: path.join(dir.sub, subFile),
+			files: null
 		}
-		if (err || skip) return callbackFile(err, skip);
+	});
+}
+
+function pluginWrap(fn) {
+	var ptype = fn.length < 2 ? 'sync' : 'async';
+	var plugin = { name: fn.name };
+	plugin[ptype] = fn;
+	return plugin;
+}
+
+var plugins = {
+	glob: glob,
+	stat: statPlugin,
+	queueDir: queueDirPlugin,
+	readDir: readDirPlugin,
+	queueDirFiles: queueDirFilesPlugin,
+	skipEmptyName: skipEmptyNamePlugin
+};
+var dirFn = {
+	rootPath: rootPath,
+	subDirPath: subDirPath,
+	enterDirPath: enterDirPath,
+	pluginWrap: pluginWrap
+};
+var SKIP = {};
+
+function all(obj, callbackFile) {
+	function next() {
 		obj.pIndex++;
 		process.nextTick(all, obj, callbackFile);
 	}
+	function callbackPlugin(err) {
+		var skip;
+		if (err === SKIP) {
+			skip = true;
+			err = void 0;
+		}
+		if (afterPlugin) {
+			afterPlugin.call(obj, err, skip);
+		}
+		if (err || skip) {
+			callbackFile(err, skip);
+		} else {
+			next();
+		}
+	}
 	var pIndex = obj.pIndex;
 	var nextPlugin = obj.plugins[pIndex];
+	if (!nextPlugin) {
+		return callbackFile();
+	}
+	if (nextPlugin instanceof Function) {
+		obj.plugins[pIndex] = nextPlugin = pluginWrap(nextPlugin);
+	}
+	var nextFilter = nextPlugin.filter;
+	if (nextFilter && !nextFilter.call(obj, obj.file)) {
+		return next();
+	}
 	var beforePlugin = obj.beforePlugin;
 	var afterPlugin = obj.afterPlugin;
 	if (beforePlugin) {
 		beforePlugin.call(obj);
 	}
-	if (nextPlugin) {
-		nextPlugin.call(obj, obj.file, callbackPlugin);
+	if (nextPlugin.sync) {
+		callbackPlugin(nextPlugin.sync.call(obj, obj.file));
 	} else {
-		callbackFile();
+		nextPlugin.async.call(obj, obj.file, callbackPlugin);
 	}
 }
 
 function dir(opt) {
 	function next(err) {
-		if (err) return callback.call(obj, err);
+		if (err) {
+			if (onError) {
+				onError.call(obj, err, obj.file);
+			} else {
+				return callback.call(obj, err, obj.result);
+			}
+		}
 		var file = obj.queue.shift();
 		obj.lastFile = obj.file;
 		obj.file = file;
@@ -318,21 +393,24 @@ function dir(opt) {
 		if (file) {
 			all(obj, callbackFile);
 		} else {
-			callback.call(obj);
+			callback.call(obj, null, obj.result);
 		}
 	}
 	var beforeFile = opt.beforeFile;
 	var afterFile = opt.afterFile;
 	var callback = opt.callback;
+	var onError = opt.onError;
 	var obj = {
 		plugins: opt.plugins || [],
 		pIndex: 0,
 		file: void 0,
 		lastFile: void 0,
-		queue: [].concat(opt.path || []).map(pathToFile),
+		queue: [].concat(opt.path || []).map(rootPath),
 		result: opt.result,
 		beforePlugin: opt.beforePlugin,
 		afterPlugin: opt.afterPlugin,
+		SKIP: SKIP,
+		fn: dirFn,
 		opt: opt
 	};
 	var callbackFile = function(err, skip) {
@@ -341,10 +419,12 @@ function dir(opt) {
 		}
 		next(err);
 	};
-	return next;
+	next();
 }
 
 dir.plugins = plugins;
 dir.timePlugins = timePlugins;
+dir.SKIP = SKIP;
+dir.fn = dirFn;
 
 export default dir;
