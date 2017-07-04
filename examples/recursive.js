@@ -10,15 +10,15 @@ dirFiles({
 		? path.resolve(argPath)
 		: path.join(__dirname, '..'),
 	plugins: [
-		function skipFile(file) {
+		dfp.skip(function skipSpecial(file) {
 			var name = file.name;
 			// example of manual skipping
 			var charZero = name.charAt(0);
 			var skip = ('.' === charZero) ||
 				('$' === charZero) ||
 				('node_modules' === name);
-			return skip ? this.SKIP : null;
-		},
+			return skip;
+		}),
 		/*dfp.glob({
 			include: ['*.js'],
 			exclude: ['.*', 'node_modules', 'test', 'rollup.*']
@@ -27,12 +27,12 @@ dirFiles({
 		dfp.readDir(pluginOpt),
 		dfp.queueDirFiles(pluginOpt),
 		dfp.queueDir(pluginOpt),
-		dfp.skipEmptyName,
-		function printFile(file) {
+		dfp.skip(dirFiles.fn.isEmptyFileName)
+		/*function printFile(file) {
 			if ( !file.stat.isDirectory() ) {
 				console.log('~ '+path.join(file.dir.sub, file.name));
 			}
-		}
+		}*/
 	],
 	onError: function(err, file) {
 		console.log('! '+path.join(file.dir.sub, file.name));
@@ -42,7 +42,14 @@ dirFiles({
 		if (err) {
 			throw err;
 		}
-		console.log(this.time);
+		var time = this.time;
+		//console.log(this.time);
+		time.plugins.forEach(function(p) {
+			p && console.log('plugin', p);
+		});
+		console.log('files', time.files);
+		console.log('over', time.over);
+		console.log('total', time.total);
 	},
 	beforeFile: dirFiles.timePlugins.beforeFile,
 	afterPlugin: dirFiles.timePlugins.afterPlugin

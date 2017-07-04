@@ -159,14 +159,16 @@ function queueDirFilesPlugin(opt) {
 	};
 }
 
-var skipEmptyNamePlugin = {
-	name: 'skipEmptyName',
-	sync: function skipEmptyName(file) {
-		if (!file.name) {
+function skipPlugin(opt) {
+	var filter = opt && (opt instanceof Function ? opt : opt.filter);
+	return {
+		name: opt.name || 'skip',
+		filter: filter,
+		sync: function skip(/*file*/) {
 			return this.SKIP;
 		}
-	}
-};
+	};
+}
 
 function median(series, count) {
 	var odd = count % 2;
@@ -176,11 +178,27 @@ function median(series, count) {
 		: (series[half-1] + series[half]) * 0.5;
 }
 
+function subtree(series, count, level) {
+	var odd = count % 2;
+	var half = (count - odd) * 0.5;
+	var halfodd = half+odd;
+	var median = odd
+		? series[half]
+		: (series[half-1] + series[half]) * 0.5;
+	return (level > 1 && half > 0)
+		? [].concat(
+				subtree(series.slice(0, half), half, level-1),
+				[median],
+				subtree(series.slice(halfodd, count), half, level-1)
+			)
+		: [median];
+}
+
 function stats(series) {
 	series = series && series.sort();
 	var count = series && series.length;
 	var sum = 0;
-	var sumDev = 0;
+	//var sumDev = 0;
 	var min = +Infinity;
 	var max = -Infinity;
 	var i, t;
@@ -191,20 +209,23 @@ function stats(series) {
 		(t > max) && (max = t);
 	}
 	var avg = count ? sum / count : sum;
+	/*
 	for ( i = 0; i < count; i++ ) {
 		t = series[i];
 		sumDev += Math.pow(t-avg, 2);
 	}
 	var variance = count ? sumDev / count : sumDev;
+	*/
 	return {
 		sum: sum,
 		count: count,
 		avg: avg,
 		min: min,
 		max: max,
-		variance: variance,
-		stdDev: Math.sqrt(variance),
-		median: count ? median(series, count) : 0
+		//variance: variance,
+		//stdDev: Math.sqrt(variance),
+		//median: count ? median(series, count) : 0,
+		octiles: count ? subtree(series, count, 3) : [0]
 	};
 }
 
@@ -253,7 +274,7 @@ function beforeFile(file) {
 
 function afterPlugin() {
 	var pIndex = this.pIndex;
-	if (this.plugins[pIndex].sync) return;
+	//if (this.plugins[pIndex].sync) return;
 	var time = this.time;
 	var file = this.file;
 	var ftime = file.time;
@@ -311,6 +332,10 @@ function enterDirPath(dir, subFile, stat) {
 	});
 }
 
+function isEmptyFileName(file) {
+	return !file.name;
+}
+
 function pluginWrap(fn) {
 	var ptype = fn.length < 2 ? 'sync' : 'async';
 	var plugin = { name: fn.name };
@@ -324,12 +349,13 @@ var plugins = {
 	queueDir: queueDirPlugin,
 	readDir: readDirPlugin,
 	queueDirFiles: queueDirFilesPlugin,
-	skipEmptyName: skipEmptyNamePlugin
+	skip: skipPlugin
 };
 var dirFn = {
 	rootPath: rootPath,
 	subDirPath: subDirPath,
 	enterDirPath: enterDirPath,
+	isEmptyFileName: isEmptyFileName,
 	pluginWrap: pluginWrap
 };
 var SKIP = {};
