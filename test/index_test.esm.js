@@ -3,8 +3,20 @@ import { strictEqual } from 'assert';
 
 describe('dir-files', () => {
 
-  it('returns a function', () => {
-    strictEqual(typeof dirFiles({}), 'function');
+  it('returns nothing', (done) => {
+    strictEqual(dirFiles({callback:done}), void 0);
+  });
+
+  it('execute a callback with the result when done', (done) => {
+    var result = {};
+    dirFiles({
+      result: result,
+      callback: function(err, res) {
+        if (err) return done(err);
+        strictEqual(res, result);
+        done();
+      }
+    });
   });
   /*
   it('returns 0 when either argument is 0', () => {

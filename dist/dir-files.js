@@ -336,6 +336,16 @@ function isEmptyFileName(file) {
 	return !file.name;
 }
 
+function isDir(file) {
+	var stat = file.stat;
+	return stat && stat.isDirectory();
+}
+
+function isFile(file) {
+	var stat = file.stat;
+	return stat && stat.isFile();
+}
+
 function pluginWrap(fn) {
 	var ptype = fn.length < 2 ? 'sync' : 'async';
 	var plugin = { name: fn.name };
@@ -356,6 +366,8 @@ var dirFn = {
 	subDirPath: subDirPath,
 	enterDirPath: enterDirPath,
 	isEmptyFileName: isEmptyFileName,
+	isDir: isDir,
+	isFile: isFile,
 	pluginWrap: pluginWrap
 };
 var SKIP = {};
