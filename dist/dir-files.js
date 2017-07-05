@@ -244,22 +244,13 @@ function initialize() {
 
 function beforeFile(file) {
 	var time = this.time;
-	var last = this.lastFile;
-	var ltime = last && last.time;
-	var ltotal;
-	var lover;
 	var now = Date.now();
-	if ( ltime ) {
-		ltime.total = ltotal = now - ltime.start;
-		ltime.over = lover = now - ltime.startPlugin;
-		time.files.push(ltotal);
-		time.over.push(lover);
-	}
 	if ( file ) {
 		file.time = {
 			start: now,
 			startPlugin: now,
 			plugins: [],
+			pluginsSum: 0,
 			total: 0
 		};
 	} else {
@@ -273,6 +264,17 @@ function beforeFile(file) {
 			return v;
 		});
 	}
+}
+
+function afterFile(file) {
+	var time = this.time;
+	var ftime = file.time;
+	var ftotal;
+	var fover;
+	ftime.total = ftotal = ftime.startPlugin - ftime.start;
+	ftime.over = fover = ftotal - ftime.pluginsSum;
+	time.files.push(ftotal);
+	time.over.push(fover);
 }
 
 function afterPlugin() {
@@ -305,6 +307,7 @@ function afterPlugin() {
 	}
 	timePluginObj.times.push(timePlugin);
 	ftime.plugins[pIndex] = timePlugin;
+	ftime.pluginsSum += timePlugin;
 }
 
 var timePlugins = {
@@ -312,6 +315,7 @@ var timePlugins = {
 	stats: stats,
 	initialize: initialize,
 	beforeFile: beforeFile,
+	afterFile: afterFile,
 	afterPlugin: afterPlugin
 };
 

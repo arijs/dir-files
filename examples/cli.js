@@ -47,5 +47,6 @@ dirFiles({
 	},
 	initialize: dfTime.initialize,
 	beforeFile: dfTime.beforeFile,
+	afterFile: dfTime.afterFile,
 	afterPlugin: dfTime.afterPlugin
 });
