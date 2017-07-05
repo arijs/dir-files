@@ -2,6 +2,7 @@ var path = require('path');
 var dirFiles = require('../dist/dir-files');
 
 var dfp = dirFiles.plugins;
+var dfTime = dirFiles.timePlugins;
 var pluginOpt = {};
 
 dirFiles({
@@ -44,6 +45,7 @@ dirFiles({
 		console.log('over', time.over);
 		console.log('total', time.total);
 	},
-	beforeFile: dirFiles.timePlugins.beforeFile,
-	afterPlugin: dirFiles.timePlugins.afterPlugin
+	initialize: dfTime.initialize,
+	beforeFile: dfTime.beforeFile,
+	afterPlugin: dfTime.afterPlugin
 });

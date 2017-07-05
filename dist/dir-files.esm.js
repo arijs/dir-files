@@ -166,6 +166,8 @@ function skipPlugin(opt) {
 	};
 }
 
+var hasOwnProperty = Object.prototype.hasOwnProperty;
+
 function median(series, count) {
 	var odd = count % 2;
 	var half = (count - odd) * 0.5;
@@ -225,6 +227,17 @@ function stats(series) {
 	};
 }
 
+function initialize() {
+	this.time = {
+		start: Date.now(),
+		plugins: [],
+		files: [],
+		over: [],
+		total: 0
+	};
+	this.timePluginMap = {};
+}
+
 function beforeFile(file) {
 	var time = this.time;
 	var last = this.lastFile;
@@ -232,15 +245,6 @@ function beforeFile(file) {
 	var ltotal;
 	var lover;
 	var now = Date.now();
-	if ( !time ) {
-		this.time = time = {
-			start: now,
-			plugins: [],
-			files: [],
-			over: [],
-			total: 0
-		}
-	}
 	if ( ltime ) {
 		ltime.total = ltotal = now - ltime.start;
 		ltime.over = lover = now - ltime.startPlugin;
@@ -255,13 +259,12 @@ function beforeFile(file) {
 			total: 0
 		};
 	} else {
-		var plugins = this.plugins;
 		time.total = now - time.start;
 		time.files = stats(time.files);
 		time.over = stats(time.over);
 		time.plugins = time.plugins.map(function(v, i) {
-			v = stats(v);
-			var name = plugins[i].name;
+			var name = v.name;
+			v = stats(v.times);
 			v.name = name || 'plugin #'+(i+1);
 			return v;
 		});
@@ -269,26 +272,41 @@ function beforeFile(file) {
 }
 
 function afterPlugin() {
-	var pIndex = this.pIndex;
-	//if (this.plugins[pIndex].sync) return;
-	var time = this.time;
 	var file = this.file;
 	var ftime = file.time;
 	var startPlugin = ftime.startPlugin;
 	var now = Date.now();
-	var timePlugin = now - startPlugin;
-	var timePluginArray = time.plugins[pIndex];
 	ftime.startPlugin = now;
-	if ( !timePluginArray ) {
-		time.plugins[pIndex] = timePluginArray = [];
+	var pIndex = this.pIndex;
+	var pluginObj = this.plugins[pIndex];
+	var pName = pluginObj.name;
+	//
+	if ( !pName || pluginObj.pluginTimeIgnore ) return;
+	//
+	var time = this.time;
+	var timePluginMap = this.timePluginMap;
+	var tpIndex;
+	if (hasOwnProperty.call(timePluginMap, pName)) {
+		tpIndex = timePluginMap[pName];
+	} else {
+		timePluginMap[pName] = tpIndex = time.plugins.length;
 	}
-	timePluginArray.push(timePlugin);
+	var timePlugin = now - startPlugin;
+	var timePluginObj = time.plugins[tpIndex];
+	if ( !timePluginObj ) {
+		time.plugins[tpIndex] = timePluginObj = {
+			name: pName,
+			times: []
+		};
+	}
+	timePluginObj.times.push(timePlugin);
 	ftime.plugins[pIndex] = timePlugin;
 }
 
 var timePlugins = {
 	median: median,
 	stats: stats,
+	initialize: initialize,
 	beforeFile: beforeFile,
 	afterPlugin: afterPlugin
 };
@@ -418,7 +436,8 @@ function dir(opt) {
 			if (onError) {
 				onError.call(obj, err, obj.file);
 			} else {
-				return callback.call(obj, err, obj.result);
+				finished(err);
+				return;
 			}
 		}
 		var file = obj.queue.shift();
@@ -431,11 +450,19 @@ function dir(opt) {
 		if (file) {
 			all(obj, callbackFile);
 		} else {
-			callback.call(obj, null, obj.result);
+			finished();
 		}
+	}
+	function finished(err) {
+		if (finalize) {
+			finalize.call(obj, err, obj.result);
+		}
+		callback.call(obj, err, obj.result);
 	}
 	var beforeFile = opt.beforeFile;
 	var afterFile = opt.afterFile;
+	var initialize = opt.initialize;
+	var finalize = opt.finalize;
 	var callback = opt.callback;
 	var onError = opt.onError;
 	var obj = {
@@ -457,6 +484,9 @@ function dir(opt) {
 		}
 		next(err);
 	};
+	if (initialize) {
+		initialize.call(obj);
+	}
 	next();
 }
 

@@ -7,60 +7,59 @@ var path = require('path');
 var dirFiles = require('../dist/dir-files');
 
 var dfp = dirFiles.plugins;
+var pluginOpt = {};
 
 dirFiles({
 	path: path.join(__dirname, '..'),
 	plugins: [
-		function(file, callback) {
+		dfp.skip(function skipSpecial(file) {
 			var name = file.name;
 			// example of manual skipping
-			var skip = ('.' === name.charAt(0)) || ('node_modules' === name);
-			callback(null, skip);
-		},
-		dfp.stat(),
-		/*dfp.glob({
-			include: ['*.js'],
-			exclude: ['.*', 'node_modules', 'test', 'rollup.*']
-		}),*/
-		dfp.readDir(),
-		dfp.addDirFiles(),
-		dfp.rec(),
-		function(file, callback) {
-			if ( file.name && !file.stat.isDirectory() ) {
-				console.log(path.join(file.dir.sub, file.name));
-			}
-			callback();
+			var charZero = name.charAt(0);
+			var skip = ('.' === charZero) ||
+				('$' === charZero) ||
+				('node_modules' === name);
+			return skip;
+		}),
+		dfp.stat(pluginOpt),
+		dfp.queueDir(pluginOpt),
+		dfp.readDir(pluginOpt),
+		dfp.queueDirFiles(pluginOpt),
+		dfp.skip(function skipEmptyNameOrDir(file) {
+			return !file.name || file.stat.isDirectory();
+		}),
+		function printFile(file) {
+			console.log('~ '+path.join(file.dir.sub, file.name));
 		}
 	],
 	callback: function(err) {
-		if (err) {
-			throw err;
-		}
+		if (err) throw err;
 	}
-})();
+});
 ```
 
 Output:
 
 ```
-README.md
-dist
-examples
-lib
-package.json
-rollup.config.js
-rollup.config.test.js
-test
-dist/dir-files.esm.js
-dist/dir-files.js
-examples/recursive.js
-lib/index.js
-lib/plugins
-test/index_test.esm.js
-test/istanbul.reporter.js
-test/mocha.opts
-lib/plugins/add-dir-files.js
-lib/plugins/read-dir.js
-lib/plugins/rec.js
-lib/plugins/stat.js
+~ README.md
+~ dist/dir-files.esm.js
+~ dist/dir-files.js
+~ dist/test/index_test.js
+~ examples/cli.js
+~ examples/dynamic.js
+~ examples/recursive.js
+~ lib/index.js
+~ lib/plugins/glob.js
+~ lib/plugins/queue-dir-files.js
+~ lib/plugins/queue-dir.js
+~ lib/plugins/read-dir.js
+~ lib/plugins/skip.js
+~ lib/plugins/stat.js
+~ lib/time-plugins.js
+~ package.json
+~ rollup.config.js
+~ rollup.config.test.js
+~ test/index_test.esm.js
+~ test/istanbul.reporter.js
+~ test/mocha.opts
 ```
