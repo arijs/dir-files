@@ -331,19 +331,30 @@ function afterPlugin() {
 		};
 	}
 	timePluginObj.times.push(timePlugin);
-	ftime.plugins[pIndex] = timePlugin;
+	ftime.plugins[pIndex] = {
+		name: pName,
+		time: timePlugin
+	};
 	ftime.pluginsSum += timePlugin;
 }
 
-var timePlugins = {
-	median: median,
-	stats: stats,
+var timePluginsObj = {
+	//median,
+	//stats,
 	initialize: initialize,
 	finalize: finalize,
 	beforeFile: beforeFile,
 	afterFile: afterFile,
 	afterPlugin: afterPlugin
 };
+
+function timePlugins() {
+	return timePluginsObj;
+}
+
+timePlugins.median = median;
+timePlugins.subtree = subtree;
+timePlugins.stats = stats;
 
 function rootPath(pathname) {
 	return ({
@@ -420,10 +431,10 @@ var dirFn = {
 };
 var SKIP = {};
 
-function all(obj, callbackFile) {
+function runPlugins(obj, processStep, callbackFile) {
 	function next() {
 		obj.pIndex++;
-		process.nextTick(all, obj, callbackFile);
+		process.nextTick(runPlugins, obj, processStep, callbackFile);
 	}
 	function callbackPlugin(err) {
 		var skip;
@@ -431,9 +442,7 @@ function all(obj, callbackFile) {
 			skip = true;
 			err = void 0;
 		}
-		if (afterPlugin) {
-			afterPlugin.call(obj, err, skip);
-		}
+		processStep('afterPlugin', obj, [err, skip]);
 		if (err || skip) {
 			callbackFile(err, skip);
 		} else {
@@ -449,14 +458,15 @@ function all(obj, callbackFile) {
 		obj.plugins[pIndex] = nextPlugin = pluginWrap(nextPlugin);
 	}
 	var nextFilter = nextPlugin.filter;
-	if (nextFilter && !nextFilter.call(obj, obj.file)) {
+	var nextFilterResult = true;
+	if (nextFilter) {
+		nextFilterResult = nextFilter.call(obj, obj.file);
+		processStep('filterPlugin', obj, [obj.file, nextFilterResult]);
+	}
+	if (!nextFilterResult) {
 		return next();
 	}
-	var beforePlugin = obj.beforePlugin;
-	var afterPlugin = obj.afterPlugin;
-	if (beforePlugin) {
-		beforePlugin.call(obj);
-	}
+	processStep('beforePlugin', obj);
 	if (nextPlugin.sync) {
 		callbackPlugin(nextPlugin.sync.call(obj, obj.file));
 	} else {
@@ -479,24 +489,27 @@ function dir(opt) {
 		obj.file = file;
 		obj.pIndex = 0;
 		if (file) {
-			if (beforeFile) {
-				beforeFile.call(obj, file);
-			}
-			all(obj, callbackFile);
+			processStep('beforeFile', obj, [file]);
+			runPlugins(obj, processStep, callbackFile);
 		} else {
 			finished();
 		}
 	}
 	function finished(err) {
-		if (finalize) {
-			finalize.call(obj, err, obj.result);
-		}
+		processStep('finalize', obj, [err, obj.result]);
 		callback.call(obj, err, obj.result);
 	}
-	var beforeFile = opt.beforeFile;
-	var afterFile = opt.afterFile;
-	var initialize = opt.initialize;
-	var finalize = opt.finalize;
+	function processStep(name, ctx, args) {
+		var count = processPlugins.length;
+		for ( var i = 0; i < count; i++ ) {
+			var p = processPlugins[i];
+			var fn = p && p[name];
+			if (fn instanceof Function) {
+				fn.apply(ctx, args);
+			}
+		}
+	}
+	var processPlugins = opt.processPlugins || [];
 	var callback = opt.callback;
 	var onError = opt.onError;
 	var obj = {
@@ -513,14 +526,10 @@ function dir(opt) {
 		opt: opt
 	};
 	var callbackFile = function(err, skip) {
-		if (afterFile) {
-			afterFile.call(obj, obj.file, err, skip);
-		}
+		processStep('afterFile', obj, [obj.file, err, skip]);
 		next(err);
 	};
-	if (initialize) {
-		initialize.call(obj);
-	}
+	processStep('initialize', obj);
 	next();
 }
 

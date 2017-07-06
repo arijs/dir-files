@@ -45,9 +45,7 @@ dirFiles({
 		console.log('over', time.over);
 		console.log('total', time.total);
 	},
-	initialize: dfTime.initialize,
-	finalize: dfTime.finalize,
-	beforeFile: dfTime.beforeFile,
-	afterFile: dfTime.afterFile,
-	afterPlugin: dfTime.afterPlugin
+	processPlugins: [
+		dirFiles.timePlugins()
+	]
 });
