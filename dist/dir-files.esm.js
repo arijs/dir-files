@@ -4,9 +4,11 @@ import fs from 'fs';
 
 /*eslint no-console: 0*/
 
+var hasOwnProperty = Object.prototype.hasOwnProperty;
+
 function glob ( opt ) {
-	var Minimatch = mm.Minimatch;
 	opt || (opt = {});
+	var Minimatch = mm.Minimatch;
 	var mmOpts = opt.options || {
 		nocase: true,
 		matchBase: true
@@ -25,9 +27,16 @@ function glob ( opt ) {
 	for ( i = 0; i < excludeCount; i++ ) {
 		excludePatterns[i] = new Minimatch( excludePatterns[i], excludeOptions );
 	}
-	return function glob ( file, callback ) {
-		var allow = true;
-		if ( file.name ) {
+	return {
+		name: 'glob',
+		filter: function ( file ) {
+			return file.name;
+		},
+		pluginTimeIgnore: hasOwnProperty.call(opt, 'pluginTimeIgnore')
+			? opt.pluginTimeIgnore
+			: true,
+		sync: function glob ( file ) {
+			var allow = true;
 			var stat = file.stat;
 			allow = stat && stat.isDirectory();
 			var fname = [].concat(file.dir.sub || [], file.name).join('/');
@@ -51,8 +60,8 @@ function glob ( opt ) {
 					}
 				}
 			}
+			return !allow;
 		}
-		return callback(null, !allow);
 	};
 }
 
@@ -79,11 +88,16 @@ function statPlugin(opt) {
 
 /*eslint no-console: 0*/
 
+var hasOwnProperty$1 = Object.prototype.hasOwnProperty;
+
 function queueDirPlugin(opt) {
 	opt || (opt = {});
 	var filter = opt.filter;
 	return {
 		name: 'queueDir',
+		pluginTimeIgnore: hasOwnProperty$1.call(opt, 'pluginTimeIgnore')
+			? opt.pluginTimeIgnore
+			: true,
 		filter: function(file) {
 			return file.name &&
 				file.stat &&
@@ -123,11 +137,16 @@ function readDirPlugin(opt) {
 
 /*eslint no-console: 0*/
 
+var hasOwnProperty$2 = Object.prototype.hasOwnProperty;
+
 function queueDirFilesPlugin(opt) {
 	opt || (opt = {});
 	var filter = opt.filter;
 	return {
 		name: 'queueDirFiles',
+		pluginTimeIgnore: hasOwnProperty$2.call(opt, 'pluginTimeIgnore')
+			? opt.pluginTimeIgnore
+			: true,
 		filter: function(file) {
 			return !file.name &&
 				file.stat &&
@@ -155,10 +174,15 @@ function queueDirFilesPlugin(opt) {
 	};
 }
 
+var hasOwnProperty$3 = Object.prototype.hasOwnProperty;
+
 function skipPlugin(opt) {
 	var filter = opt && (opt instanceof Function ? opt : opt.filter);
 	return {
 		name: opt.name || 'skip',
+		pluginTimeIgnore: hasOwnProperty$3.call(opt, 'pluginTimeIgnore')
+			? opt.pluginTimeIgnore
+			: true,
 		filter: filter,
 		sync: function skip(/*file*/) {
 			return this.SKIP;
@@ -166,7 +190,7 @@ function skipPlugin(opt) {
 	};
 }
 
-var hasOwnProperty = Object.prototype.hasOwnProperty;
+var hasOwnProperty$4 = Object.prototype.hasOwnProperty;
 
 function median(series, count) {
 	var odd = count % 2;
@@ -238,28 +262,29 @@ function initialize() {
 	this.timePluginMap = {};
 }
 
-function beforeFile(file) {
+function finalize() {
 	var time = this.time;
 	var now = Date.now();
-	if ( file ) {
-		file.time = {
-			start: now,
-			startPlugin: now,
-			plugins: [],
-			pluginsSum: 0,
-			total: 0
-		};
-	} else {
-		time.total = now - time.start;
-		time.files = stats(time.files);
-		time.over = stats(time.over);
-		time.plugins = time.plugins.map(function(v, i) {
-			var name = v.name;
-			v = stats(v.times);
-			v.name = name || 'plugin #'+(i+1);
-			return v;
-		});
-	}
+	time.total = now - time.start;
+	time.files = stats(time.files);
+	time.over = stats(time.over);
+	time.plugins = time.plugins.map(function(v, i) {
+		var name = v.name;
+		v = stats(v.times);
+		v.name = name || 'plugin #'+(i+1);
+		return v;
+	});
+}
+
+function beforeFile(file) {
+	var now = Date.now();
+	file.time = {
+		start: now,
+		startPlugin: now,
+		plugins: [],
+		pluginsSum: 0,
+		total: 0
+	};
 }
 
 function afterFile(file) {
@@ -288,7 +313,7 @@ function afterPlugin() {
 	var time = this.time;
 	var timePluginMap = this.timePluginMap;
 	var tpIndex;
-	if (hasOwnProperty.call(timePluginMap, pName)) {
+	if (hasOwnProperty$4.call(timePluginMap, pName)) {
 		tpIndex = timePluginMap[pName];
 	} else {
 		timePluginMap[pName] = tpIndex = time.plugins.length;
@@ -310,6 +335,7 @@ var timePlugins = {
 	median: median,
 	stats: stats,
 	initialize: initialize,
+	finalize: finalize,
 	beforeFile: beforeFile,
 	afterFile: afterFile,
 	afterPlugin: afterPlugin
@@ -448,10 +474,10 @@ function dir(opt) {
 		obj.lastFile = obj.file;
 		obj.file = file;
 		obj.pIndex = 0;
-		if (beforeFile) {
-			beforeFile.call(obj, file);
-		}
 		if (file) {
+			if (beforeFile) {
+				beforeFile.call(obj, file);
+			}
 			all(obj, callbackFile);
 		} else {
 			finished();
