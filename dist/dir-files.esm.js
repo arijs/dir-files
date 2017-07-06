@@ -216,8 +216,12 @@ function subtree(series, count, level) {
 		: [median];
 }
 
+function numericSort(a,b) {
+	return a - b;
+}
+
 function stats(series) {
-	series = series && series.sort();
+	series = series && series.sort(numericSort);
 	var count = series && series.length;
 	var sum = 0;
 	//var sumDev = 0;
