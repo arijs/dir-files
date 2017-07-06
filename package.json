@@ -1,6 +1,6 @@
 {
   "name": "dir-files",
-  "version": "1.0.0-rc.11",
+  "version": "1.0.0-rc.12",
   "description": "micro library to get files from a path with middlewares",
   "main": "dist/dir-files.js",
   "module": "dist/dir-files.esm.js",
