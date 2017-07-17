@@ -25,7 +25,13 @@ dirFiles({
 			return !file.name || file.stat.isDirectory();
 		}),
 		function printFile(file) {
-			console.log('~ '+path.join(file.dir.sub, file.name));
+			var parent = file.parent;
+			console.log('~ '+
+				path.join(file.dir.sub, file.name)+
+				(parent
+				? ' ('+parent.dir.sub+':'+parent.name+')'
+				: '')
+			);
 		}
 	],
 	onError: function(err, file) {

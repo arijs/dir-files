@@ -106,13 +106,13 @@ function queueDirPlugin(opt) {
 			return file.name &&
 				file.stat &&
 				file.stat.isDirectory() &&
-				( !filter || filter(file) );
+				( !filter || filter.call(this, file) );
 		},
 		sync: function(file) {
 			if (opt.verbose) {
 				console.log('queueDir', file.dir.sub, file.name);
 			}
-			var clean = this.fn.enterDirPath(file.dir, file.name, file.stat);
+			var clean = this.fn.enterDirPath(file);
 			this.queue = [clean].concat(this.queue);
 		}
 	};
@@ -169,8 +169,8 @@ function queueDirFilesPlugin(opt) {
 				filter = void 0;
 			}
 			fileList.forEach(function queueFile(subFile) {
-				subFile = self.fn.subDirPath(dir, subFile, null);
-				if (filter && !filter(subFile)) return;
+				subFile = self.fn.subDirPath(file, subFile);
+				if (filter && !filter.call(self, subFile)) return;
 				clean.push(subFile);
 			});
 			this.queue = clean.concat(this.queue);
@@ -365,31 +365,40 @@ function rootPath(pathname) {
 		name: '',
 		fullpath: pathname,
 		stat: null,
+		parent: null,
 		dir: {
 			root: pathname,
 			sub: '',
+			parent: null,
 			files: null
 		}
 	});
 }
 
-function subDirPath(dir, subFile, stat) {
+function subDirPath(file, subFile) {
+	var dir = file.dir;
 	return ({
 		name: subFile,
 		fullpath: path.join(dir.root, dir.sub, subFile),
-		stat: stat,
+		stat: null,
+		parent: file.parent,
 		dir: dir
 	});
 }
 
-function enterDirPath(dir, subFile, stat) {
+function enterDirPath(file) {
+	var dir = file.dir;
+	var subFile = file.name;
+	var stat = file.stat;
 	return ({
 		name: '',
 		fullpath: path.join(dir.root, dir.sub, subFile),
 		stat: stat,
+		parent: file,
 		dir: {
 			root: dir.root,
 			sub: path.join(dir.sub, subFile),
+			parent: dir,
 			files: null
 		}
 	});

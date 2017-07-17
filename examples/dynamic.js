@@ -17,9 +17,6 @@ var stat = dfp.stat(pluginOpt);
 var queueDir = dfp.queueDir(pluginOpt);
 var readDir = dfp.readDir(pluginOpt);
 var queueDirFiles = dfp.queueDirFiles(pluginOpt);
-/*var skipEmptyNameOrDir = dfp.skip(function skipEmptyNameOrDir(file) {
-	return !file.name || file.stat.isDirectory();
-});*/
 var printFile = function printFile(file) {
 	console.log('~ '+path.join(file.dir.sub, file.name));
 };
@@ -42,19 +39,13 @@ var initialPlugins = [
 
 dirFiles({
 	path: path.join(__dirname, '..'),
-	/*plugins: [
-		skipSpecial,
-		stat,
-		queueDir,
-		readDir,
-		queueDirFiles,
-		skipEmptyNameOrDir,
-		printFile
-	],*/
-	beforeFile: function() {
-		this.plugins = initialPlugins.slice();
-		//this.pIndex = 0;
-	},
+	processPlugins: [
+		{
+			beforeFile: function() {
+				this.plugins = initialPlugins.slice();
+			}
+		}
+	],
 	callback: function(err) {
 		if (err) throw err;
 	}
