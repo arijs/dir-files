@@ -92,6 +92,30 @@ function statPlugin(opt) {
 
 /*eslint no-console: 0*/
 
+function statSyncPlugin(opt) {
+	return {
+		name: 'stat',
+		filter: function(file) {
+			return !file.stat;
+		},
+		sync: function stat(file) {
+			try {
+				var stat = file.stat = fs.statSync(file.fullpath);
+				if (opt && opt.verbose) {
+					console.log('stat', file.dir.sub, file.name, undefined, stat);
+				}
+			} catch(err) {
+				if (opt && opt.verbose) {
+					console.log('stat', file.dir.sub, file.name, err, stat);
+				}
+				return err;
+			}
+		}
+	};
+}
+
+/*eslint no-console: 0*/
+
 var hasOwnProperty$1 = Object.prototype.hasOwnProperty;
 
 function queueDirPlugin(opt) {
@@ -135,6 +159,30 @@ function readDirPlugin(opt) {
 				file.dir.files = dirFiles;
 				callback(err);
 			});
+		}
+	};
+}
+
+/*eslint no-console: 0*/
+
+function readDirSyncPlugin(opt) {
+	return {
+		name: 'readDir',
+		filter: function(file) {
+			return !file.name && file.stat && file.stat.isDirectory();
+		},
+		sync: function readDir(file) {
+			try {
+				var dirFiles = file.dir.files = fs.readdirSync(file.fullpath);
+				if (opt && opt.verbose) {
+					console.log('readdir', file.dir.sub, file.name, undefined, dirFiles.length);
+				}
+			} catch (err) {
+				if (opt && opt.verbose) {
+					console.log('readdir', file.dir.sub, file.name, err, dirFiles.length);
+				}
+				return err;
+			}
 		}
 	};
 }
@@ -389,11 +437,10 @@ function subDirPath(file, subFile) {
 function enterDirPath(file) {
 	var dir = file.dir;
 	var subFile = file.name;
-	var stat = file.stat;
 	return ({
 		name: '',
 		fullpath: path.join(dir.root, dir.sub, subFile),
-		stat: stat,
+		stat: file.stat,
 		parent: file,
 		dir: {
 			root: dir.root,
@@ -428,8 +475,10 @@ function pluginWrap(fn) {
 var plugins = {
 	glob: glob,
 	stat: statPlugin,
+	statSync: statSyncPlugin,
 	queueDir: queueDirPlugin,
 	readDir: readDirPlugin,
+	readDirSync: readDirSyncPlugin,
 	queueDirFiles: queueDirFilesPlugin,
 	skip: skipPlugin
 };
@@ -447,7 +496,8 @@ var SKIP = {};
 function runPlugins(obj, processStep, callbackFile) {
 	function next() {
 		obj.pIndex++;
-		process.nextTick(runPlugins, obj, processStep, callbackFile);
+		// process.nextTick(
+		runPlugins(obj, processStep, callbackFile);
 	}
 	function callbackPlugin(err) {
 		var skip;
