@@ -112,5 +112,5 @@ See the [API reference](api.md#typescript).
 | Rollup + Buble | Vite library mode |
 | Mocha + Istanbul, tests against `dist` | Vitest + v8 coverage, tests against `src` |
 | ESLint 7 `.eslintrc` | ESLint 10 flat config, type-aware |
-| Travis CI | GitHub Actions |
+| Travis CI | GitHub Actions (`.github/workflows/ci.yml`) |
 | `dist/` committed | `dist/` built on demand |

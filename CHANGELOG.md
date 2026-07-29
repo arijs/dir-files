@@ -51,8 +51,6 @@ Full rewrite of the internals with the public API held fixed. See
   thresholds are enforced.
 - **Docs.** `docs/api.md`, `docs/plugins.md` and `docs/migration.md`, plus a
   rewritten README and a new `examples/glob.js`.
-- **CI.** GitHub Actions running lint, typecheck, tests, build, the examples and
-  `npm audit` on Node 20, 22 and 24.
 
 ### Changed
 
@@ -60,7 +58,8 @@ Full rewrite of the internals with the public API held fixed. See
 - Tests moved from Mocha + Istanbul (run against `dist/`) to Vitest + v8
   coverage (run against `src/`).
 - Lint moved from ESLint 7 `.eslintrc` to ESLint 10 flat config, type-aware.
-- CI moved from Travis to GitHub Actions.
+- Travis CI config removed; a GitHub Actions workflow replaces it (added
+  separately, see the pull request).
 - Examples rewritten as ESM.
 
 ## 1.0.0-rc.15
