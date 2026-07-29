@@ -1,21 +1,26 @@
-var path = require('path');
-var dirFiles = require('../dist/dir-files');
+// Walk a directory given on the command line and report timings.
+//
+//   node examples/cli.js ../some/path
 
-var dfp = dirFiles.plugins;
-var dfTime = dirFiles.timePlugins;
-var pluginOpt = {};
+import path from 'node:path';
+
+import dirFiles from '../dist/dir-files.js';
+
+const target = process.argv[2];
+if (!target) {
+	console.error('usage: node examples/cli.js <path>');
+	process.exit(1);
+}
+
+const dfp = dirFiles.plugins;
+const pluginOpt = {};
 
 dirFiles({
-	path: path.resolve(process.argv[2]),
+	path: path.resolve(target),
 	plugins: [
 		dfp.skip(function skipSpecial(file) {
-			var name = file.name;
-			// example of manual skipping
-			var charZero = name.charAt(0);
-			var skip = ('.' === charZero) ||
-				('$' === charZero) ||
-				('node_modules' === name);
-			return skip;
+			const charZero = file.name.charAt(0);
+			return charZero === '.' || charZero === '$' || file.name === 'node_modules';
 		}),
 		dfp.stat(pluginOpt),
 		dfp.queueDir(pluginOpt),
@@ -25,33 +30,27 @@ dirFiles({
 			return !file.name || file.stat.isDirectory();
 		}),
 		function printFile(file) {
-			var parent = file.parent;
-			console.log('~ '+
-				path.join(file.dir.sub, file.name)+
-				(parent
-				? ' ('+parent.dir.sub+':'+parent.name+')'
-				: '')
+			const parent = file.parent;
+			console.log(
+				'~ ' +
+					path.join(file.dir.sub, file.name) +
+					(parent ? ` (${parent.dir.sub}:${parent.name})` : ''),
 			);
-		}
+		},
 	],
-	onError: function(err, file) {
-		console.log('! '+path.join(file.dir.sub, file.name));
+	onError(err, file) {
+		console.log('! ' + path.join(file.dir.sub, file.name));
 		console.error(err);
 	},
-	callback: function(err) {
-		if (err) {
-			throw err;
+	callback(err) {
+		if (err) throw err;
+		const time = this.time;
+		for (const p of time.plugins) {
+			if (p) console.log('plugin', p);
 		}
-		var time = this.time;
-		//console.log(this.time);
-		time.plugins.forEach(function(p) {
-			p && console.log('plugin', p);
-		});
 		console.log('files', time.files);
 		console.log('over', time.over);
 		console.log('total', time.total);
 	},
-	processPlugins: [
-		dirFiles.timePlugins()
-	]
+	processPlugins: [dirFiles.timePlugins()],
 });
