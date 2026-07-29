@@ -1,2 +1,0 @@
-dist/test
---reporter test/istanbul.reporter.js --recursive --compilers js:buble/register

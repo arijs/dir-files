@@ -1,26 +1,31 @@
-var path = require('path');
-var dirFiles = require('../dist/dir-files');
+// Build the plugin chain per entry instead of running one fixed chain.
+//
+//   node examples/dynamic.js
 
-var dfp = dirFiles.plugins;
-var pluginOpt = {};
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-var skipSpecial = dfp.skip(function skipSpecial(file) {
-	var name = file.name;
-	// example of manual skipping
-	var charZero = name.charAt(0);
-	var skip = ('.' === charZero) ||
-		('$' === charZero) ||
-		('node_modules' === name);
-	return skip;
+import dirFiles from '../dist/dir-files.js';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const dfp = dirFiles.plugins;
+const pluginOpt = {};
+
+const skipSpecial = dfp.skip(function skipSpecial(file) {
+	const charZero = file.name.charAt(0);
+	return charZero === '.' || charZero === '$' || file.name === 'node_modules';
 });
-var stat = dfp.stat(pluginOpt);
-var queueDir = dfp.queueDir(pluginOpt);
-var readDir = dfp.readDir(pluginOpt);
-var queueDirFiles = dfp.queueDirFiles(pluginOpt);
-var printFile = function printFile(file) {
-	console.log('~ '+path.join(file.dir.sub, file.name));
+const stat = dfp.stat(pluginOpt);
+const queueDir = dfp.queueDir(pluginOpt);
+const readDir = dfp.readDir(pluginOpt);
+const queueDirFiles = dfp.queueDirFiles(pluginOpt);
+
+const printFile = function printFile(file) {
+	console.log('~ ' + path.join(file.dir.sub, file.name));
 };
-var pluginAfterStat = function (file) {
+
+// Runs right after `stat`, and appends whatever should happen next.
+const pluginAfterStat = function pluginAfterStat(file) {
 	if (file.stat.isDirectory()) {
 		if (file.name) {
 			this.plugins.push(queueDir);
@@ -31,22 +36,19 @@ var pluginAfterStat = function (file) {
 		this.plugins.push(printFile);
 	}
 };
-var initialPlugins = [
-	skipSpecial,
-	stat,
-	pluginAfterStat
-];
+
+const initialPlugins = [skipSpecial, stat, pluginAfterStat];
 
 dirFiles({
-	path: path.join(__dirname, '..'),
+	path: path.join(here, '..'),
 	processPlugins: [
 		{
-			beforeFile: function() {
+			beforeFile() {
 				this.plugins = initialPlugins.slice();
-			}
-		}
+			},
+		},
 	],
-	callback: function(err) {
+	callback(err) {
 		if (err) throw err;
-	}
+	},
 });
