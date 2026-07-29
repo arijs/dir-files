@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.0
+## 1.1.0
 
 Full rewrite of the internals with the public API held fixed. See
 [docs/migration.md](docs/migration.md) for the upgrade guide.

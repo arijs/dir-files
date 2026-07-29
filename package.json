@@ -1,6 +1,6 @@
 {
   "name": "dir-files",
-  "version": "2.0.0",
+  "version": "1.1.0",
   "description": "micro library to get files from a path with middlewares",
   "type": "module",
   "main": "./dist/dir-files.js",

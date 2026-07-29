@@ -87,7 +87,7 @@ per entry.
 
 - **[API reference](docs/api.md)** — options, the context, entries, errors.
 - **[Plugins](docs/plugins.md)** — every bundled plugin, and how to write one.
-- **[Migrating from 1.x](docs/migration.md)** — what changed in 2.0.
+- **[Migrating from 1.0](docs/migration.md)** — what changed in 1.1.
 
 ## Examples
 
