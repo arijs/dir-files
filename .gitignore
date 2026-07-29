@@ -1,4 +1,6 @@
-dist/test
 node_modules
+dist
 coverage
-npm-debug.log
+*.tsbuildinfo
+npm-debug.log*
+.DS_Store
