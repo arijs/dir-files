@@ -381,6 +381,11 @@ describe('process plugins', () => {
 });
 
 describe('stack safety', () => {
+	// Both tests below are I/O bound rather than CPU bound: they create tens of
+	// thousands of real files and directories before walking them. That setup
+	// costs well under a second on Linux but roughly 25x more on Windows, where
+	// NTFS and real-time antivirus scanning charge per file created. The generous
+	// timeout covers that setup, not the traversal, which stays fast everywhere.
 	it('walks a wide directory without overflowing the stack', async () => {
 		const many: Record<string, string> = {};
 		for (let i = 0; i < 20000; i++) many[`f${i}.txt`] = '';
@@ -405,7 +410,7 @@ describe('stack safety', () => {
 		} finally {
 			removeTree(wide);
 		}
-	});
+	}, 60_000);
 
 	it('walks a deep directory without overflowing the stack', async () => {
 		let spec: Record<string, unknown> = { 'leaf.txt': 'x' };
@@ -418,5 +423,5 @@ describe('stack safety', () => {
 		} finally {
 			removeTree(deep);
 		}
-	});
+	}, 60_000);
 });
