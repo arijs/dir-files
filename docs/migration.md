@@ -1,8 +1,8 @@
-# Migrating from 1.x to 2.0
+# Migrating from 1.0 to 1.1
 
 The runtime API is unchanged. `dirFiles(opt)`, `dirFiles.plugins`,
 `dirFiles.SKIP`, `dirFiles.fn` and `dirFiles.timePlugins` all keep the same
-names, the same shapes and the same semantics. Plugins written against 1.x keep
+names, the same shapes and the same semantics. Plugins written against 1.0 keep
 working.
 
 What changed is everything around it: the package format, the glob engine, and
@@ -25,11 +25,11 @@ or stay on `1.0.0-rc.15`.
 
 ## 2. Node 20 is the minimum
 
-`engines.node` is `>=20`. 1.x had no floor and ran on Node 4-era output.
+`engines.node` is `>=20`. 1.0 had no floor and ran on Node 4-era output.
 
 ## 3. `minimatch` was replaced by `micromatch`
 
-`minimatch@3` — the only runtime dependency 1.x had — carries four ReDoS
+`minimatch@3` — the only runtime dependency 1.0 had — carries four ReDoS
 advisories, starting with
 [GHSA-f8q6-p94x-37v3](https://github.com/advisories/GHSA-f8q6-p94x-37v3), and is
 no longer maintained at that major.
@@ -37,7 +37,7 @@ no longer maintained at that major.
 Patterns behave the same for ordinary use. Two option names differ, and both old
 names are still accepted as aliases:
 
-| 1.x (minimatch) | 2.0 (micromatch) | Status |
+| 1.0 (minimatch) | 1.1 (micromatch) | Status |
 | --- | --- | --- |
 | `matchBase` | `basename` | old name still accepted |
 | `noext` | `noextglob` | old name still accepted |
@@ -48,22 +48,22 @@ before upgrading.
 
 ## 4. Bug fixes that change behaviour
 
-These are the only places where 2.0 does something different on purpose. All
-three made the affected feature unusable in 1.x, so nothing sensible could have
+These are the only places where 1.1 does something different on purpose. All
+three made the affected feature unusable in 1.0, so nothing sensible could have
 depended on the old behaviour — but they are worth knowing about.
 
 ### `glob` rejected entries as errors
 
-In 1.x the `glob` plugin returned `!allow` — a plain `true` — for an entry that
+In 1.0 the `glob` plugin returned `!allow` — a plain `true` — for an entry that
 failed the patterns. A truthy return is an *error*, so the first non-matching
 file aborted the whole traversal unless you also passed `onError`.
 
-2.0 returns `this.SKIP`, which is what a filtering plugin is supposed to do.
+1.1 returns `this.SKIP`, which is what a filtering plugin is supposed to do.
 
 ### `glob` with no `include` matched nothing
 
-In 1.x, an empty include list left `allow` false, so an `exclude`-only
-configuration rejected every file. 2.0 treats "no include patterns" as "nothing
+In 1.0, an empty include list left `allow` false, so an `exclude`-only
+configuration rejected every file. 1.1 treats "no include patterns" as "nothing
 is required", and lets `exclude` have the final say.
 
 ### `readDir` and `stat` crashed on their own error path
@@ -74,11 +74,11 @@ With `verbose: true`, the error branches logged `dirFiles.length` and
 
 ## 5. Deep or wide trees no longer overflow the stack
 
-1.x advanced the traversal with direct recursion: one stack frame per plugin,
+1.0 advanced the traversal with direct recursion: one stack frame per plugin,
 per entry, for the whole walk. A directory with 20 000 entries and a four-plugin
 chain reliably threw `RangeError: Maximum call stack size exceeded`.
 
-2.0 runs the same steps through a trampoline. Ordering is identical — synchronous
+1.1 runs the same steps through a trampoline. Ordering is identical — synchronous
 plugins still run synchronously, in the same sequence — but the stack stays flat
 regardless of tree size.
 
@@ -106,7 +106,7 @@ See the [API reference](api.md#typescript).
 
 ## 8. Repository layout
 
-| 1.x | 2.0 |
+| 1.0 | 1.1 |
 | --- | --- |
 | `lib/*.js` (ES5 + ESM syntax) | `src/*.ts` |
 | Rollup + Buble | Vite library mode |
