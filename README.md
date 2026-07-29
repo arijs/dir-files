@@ -88,6 +88,7 @@ per entry.
 - **[API reference](docs/api.md)** — options, the context, entries, errors.
 - **[Plugins](docs/plugins.md)** — every bundled plugin, and how to write one.
 - **[Migrating from 1.0](docs/migration.md)** — what changed in 1.1.
+- **[Development](docs/development.md)** — running the checks, and Windows notes.
 
 ## Examples
 
@@ -109,6 +110,9 @@ npm test          # vitest
 npm run coverage  # vitest with a coverage report
 npm run build     # vite library build into dist/
 ```
+
+See **[docs/development.md](docs/development.md)** for more, including a known
+issue with resolving local binaries on Windows under Volta.
 
 ## License
 
